@@ -5,7 +5,7 @@ using namespace System.Collections.Generic
 
 <#
 
-psgrep is a module that will contain two tools: grep and ogrep.
+pwshgrep is a module that will [eventually] contain two tools: grep and ogrep.
 
 GREP
 
@@ -15,7 +15,7 @@ grep is a dual mode search tool for PowerShell. It searches strings and text fil
 
     Acts grep-like by searching through a string. The string can be passed directly via the -String parameter or via the pipeline.
 
-    psgrep cannot act perfectly like grep because PowerShell is object based and not text based. Some interpretation is needed by psgrep
+    pwshgrep cannot act perfectly like grep because PowerShell is object based and not text based. Some interpretation is needed by pwshgrep
     to determine what to search through.
 
 
@@ -45,7 +45,7 @@ V1 feature list:
    - switch is fastest by a lot
 - SCRATCH - Switch to path mode when a path string is passed.
    - REASON: The ParameterSetName is read-only and cannot be changed once the determination is made; however, this is a limited scenario with an easy workaround.
-   - Using any param from the Path set name automatically switches psgrep to Path.
+   - Using any param from the Path set name automatically switches pwshgrep to Path.
 
 Example:
 
@@ -64,15 +64,15 @@ Instead of:
 
 'C:\data\' | grep "find me"
 
-- DONE - Add OpenFile() to [psgrepFileResult].
+- DONE - Add OpenFile() to [pwshgrepFileResult].
    - Simply run the file from the CLI and let Windows figure it which program to use based on defaults.
    - Use this method to compensate for spaces in the path: &"$($this.File)"
 - DONE - Add type accelerators.
 
 V2 features:
 - Add stats to File search
-  - Add stats to psgrepFileResult
-  - Move the file search code to psgrepFileResult
+  - Add stats to pwshgrepFileResult
+  - Move the file search code to pwshgrepFileResult
   - Simply call the search from grep, let the class store and calculate performance results, per file.
   - Use Measure-Object to generate stats for the entire job.
 
@@ -94,7 +94,7 @@ ogrep...?
 
 ### CLASS ###
 #region
-class psgrepFileResult {
+class pwshgrepFileResult {
     [System.IO.FileSystemInfo]
     $File
 
@@ -114,21 +114,21 @@ class psgrepFileResult {
     [regex]
     $Pattern
 
-    psgrepFileResult([System.IO.FileSystemInfo]$f, [int]$l, [string]$r, [string]$rp, [regex]$p) {
-        Write-Debug "[psgrepFileResult] - Begin"
+    pwshgrepFileResult([System.IO.FileSystemInfo]$f, [int]$l, [string]$r, [string]$rp, [regex]$p) {
+        Write-Debug "[pwshgrepFileResult] - Begin"
         $this.File      = $f
-        Write-Debug "[psgrepFileResult] - File: $($this.File)"
+        Write-Debug "[pwshgrepFileResult] - File: $($this.File)"
         $this.Line      = $l
-        Write-Debug "[psgrepFileResult] - Line: $($this.Line)"
+        Write-Debug "[pwshgrepFileResult] - Line: $($this.Line)"
         $this.Result    = $r
-        Write-Debug "[psgrepFileResult] - Result: $($this.Result)"
+        Write-Debug "[pwshgrepFileResult] - Result: $($this.Result)"
         $this.Root      = $rp
-        Write-Debug "[psgrepFileResult] - Root: $($this.Root)"
+        Write-Debug "[pwshgrepFileResult] - Root: $($this.Root)"
         $this.GetShortPath()
-        Write-Debug "[psgrepFileResult] - ShortPath: $($this.ShortPath)"
+        Write-Debug "[pwshgrepFileResult] - ShortPath: $($this.ShortPath)"
         $this.Pattern   = $p
-        Write-Debug "[psgrepFileResult] - Pattern: $($this.Pattern)"
-        Write-Debug "[psgrepFileResult] - End"
+        Write-Debug "[pwshgrepFileResult] - Pattern: $($this.Pattern)"
+        Write-Debug "[pwshgrepFileResult] - End"
     }
 
     GetShortPath() {
@@ -147,7 +147,7 @@ class psgrepFileResult {
 }
 
 $TypeData = @{
-    TypeName   = 'psgrepFileResult'
+    TypeName   = 'pwshgrepFileResult'
     DefaultDisplayPropertySet = 'ShortPath', 'Line', 'Result'
 }
 
@@ -155,7 +155,7 @@ Update-TypeData @TypeData -EA SilentlyContinue
 
 
 
-class psgrepStringResult {
+class pwshgrepStringResult {
     [int]
     $Line
 
@@ -166,15 +166,15 @@ class psgrepStringResult {
     [regex]
     $Pattern
 
-    psgrepStringResult([int]$l, [string]$r, [regex]$p) {
-        Write-Debug "[psgrepStringResult] - Begin"
+    pwshgrepStringResult([int]$l, [string]$r, [regex]$p) {
+        Write-Debug "[pwshgrepStringResult] - Begin"
         $this.Line      = $l
-        Write-Debug "[psgrepStringResult] - Line: $($this.Line)"
+        Write-Debug "[pwshgrepStringResult] - Line: $($this.Line)"
         $this.Result    = $r
-        Write-Debug "[psgrepStringResult] - Result: $($this.Result)"
+        Write-Debug "[pwshgrepStringResult] - Result: $($this.Result)"
         $this.Pattern   = $p
-        Write-Debug "[psgrepStringResult] - Pattern: $($this.Pattern)"
-        Write-Debug "[psgrepStringResult] - End"
+        Write-Debug "[pwshgrepStringResult] - Pattern: $($this.Pattern)"
+        Write-Debug "[pwshgrepStringResult] - End"
     }
 
 
@@ -325,18 +325,24 @@ function grep {
         }
 
         Write-Verbose "grep - File extensions: $($Include -join ', ')"
+
+        # track the line number as a zero-indexed value in String mode from multiple strings in the pipeline
+        $strLine = 0
+
+        # results are stored here for string results for pipelining purposes
+        $strResults = [List[pwshgrepStringResult]]::new()
+
+        # results are stored here for the Path mode
+        $results = [List[pwshgrepFileResult]]::new()
     }
 
 
     process {
         Write-Verbose "grep - Process"
-        Write-Verbose "grep - PSBoundParameters at Process:`n$($PSBoundParameters | Format-List | Out-String)"
+        Write-Debug "grep - PSBoundParameters at Process:`n$($PSBoundParameters | Format-List | Out-String)"
 
         switch ($PsCmdlet.ParameterSetName) {
             "path" {
-                # results are stored here
-                $results = [List[psgrepFileResult]]::new()
-
                 ### tests
                 ## this can be anything, so make sure it's something understood by the script
                 Write-Verbose "grep - Path: $($Path.ToString())"
@@ -477,7 +483,7 @@ function grep {
                         $rPattern {
                             Write-Debug "grep - Found a match: $_"
                             # don't use a try as a performance optimization
-                            $tmpRes = [psgrepFileResult]::new($f, $line, $_, $objPath.FullName, $rPattern)
+                            $tmpRes = [pwshgrepFileResult]::new($f, $line, $_, $objPath.FullName, $rPattern)
                             $results.Add($tmpRes)
 
                             $tmpRes = $null
@@ -496,13 +502,13 @@ function grep {
                             $strLine = $streamReader.ReadLine()
                             # Process each line
                             #Write-Host $line
-                            #$tmpRes = [psgrepFileResult]::new($f, $line, $LogContent, $objPath.FullName, $rPattern)
-                            $results.Add( ([psgrepFileResult]::new($f, $line, $strLine, $objPath.FullName, $rPattern)) )
+                            #$tmpRes = [pwshgrepFileResult]::new($f, $line, $LogContent, $objPath.FullName, $rPattern)
+                            $results.Add( ([pwshgrepFileResult]::new($f, $line, $strLine, $objPath.FullName, $rPattern)) )
                             # check for a match
                             if ($strLine -match $rPattern) {
                                 # create the object and save it
-                                Write-Debug "grep - [psgrepFileResult]::new($f, $line, $strLine, $($objPath.FullName), $rPattern)"
-                                $tmpRes = [psgrepFileResult]::new($f, $line, $strLine, $objPath.FullName, $rPattern)
+                                Write-Debug "grep - [pwshgrepFileResult]::new($f, $line, $strLine, $($objPath.FullName), $rPattern)"
+                                $tmpRes = [pwshgrepFileResult]::new($f, $line, $strLine, $objPath.FullName, $rPattern)
                                 $results.Add($tmpRes)
 
                                 $tmpRes = $null
@@ -529,8 +535,8 @@ function grep {
                         # check for a match
                         if ($LogContent -match $rPattern) {
                             # create the object and save it
-                            Write-Debug "grep - [psgrepFileResult]::new($f, $line, $LogContent, $($objPath.FullName), $rPattern)"
-                            $tmpRes = [psgrepFileResult]::new($f, $line, $LogContent, $objPath.FullName, $rPattern)
+                            Write-Debug "grep - [pwshgrepFileResult]::new($f, $line, $LogContent, $($objPath.FullName), $rPattern)"
+                            $tmpRes = [pwshgrepFileResult]::new($f, $line, $LogContent, $objPath.FullName, $rPattern)
                             $results.Add($tmpRes)
 
                             $tmpRes = $null
@@ -546,26 +552,36 @@ function grep {
             }
 
             "string" {
+                Write-Verbose "grep - String search."
                 if ( -NOT [string]::IsNullOrEmpty($String) ) {
-                    # results are stored here
-                    $results = [List[psgrepStringResult]]::new()
-
-                    # track the line number as a zero-indexed value
-                    $line = 0
-
                     # split the string by new line (`n) and then search.
                     # older Windows new lines may contain a return (`r), so make that an optional parameter of the regex (`r?)
                     # [Environment]::NewLine doesn't appear to work...?
-                    $string -Split "\r?\n" | & {process{
-                        if ($_ -match $rPattern) {
-                            $results.Add(( [psgrepStringResult]::new($line, $_, $rPattern) ))
+                    if ($string -match "\r?\n") {
+                        Write-Debug "grep - split"
+                        $line = 0
+                        $string -Split "\r?\n" | & {process{
+                            if ($_ -match $rPattern) {
+                                Write-Debug "grep - String split matched."
+                                $strResults.Add(( [pwshgrepStringResult]::new($line, $_, $rPattern) ))
+                            }
+    
+                            # fast increment the line number
+                            $line = $line + 1
+                            Write-Verbose "grep - line: $line"
+                        }}
+                    # this path handles multiple strings from the pipeline when using, for example, Get-Content (alias: cat) or a [string[]] object
+                    } else {
+                        Write-Debug "grep - pipe: $String match $rPattern"
+                        if ($String -match $rPattern) {
+                            Write-Debug "grep - String matched."
+                            $strResults.Add(( [pwshgrepStringResult]::new($strLine, $String, $rPattern) ))
                         }
 
                         # fast increment the line number
-                        $line = $line + 1
-                    }}
-
-
+                        $strLine = $strLine + 1
+                        Write-Verbose "grep - strLine: $strLine"
+                    }
                 } else {
                     Write-Verbose "grep - The string input is null or empty."
                 }
@@ -580,15 +596,18 @@ function grep {
     end {
         Write-Verbose "grep - End"
         Write-Verbose "grep - Work Complete!"
-        return $results
+        switch ($PsCmdlet.ParameterSetName) {
+            "path"   {return $results}
+            "string" {return $strResults}
+        }
     }
 }
 
 
 #region TYPE ACCELERATORS
 $ExportableTypes =@(
-    [psgrepFileResult]
-    [psgrepStringResult]
+    [pwshgrepFileResult]
+    [pwshgrepStringResult]
 )
 
 # Get the internal TypeAccelerators class to use its static methods.
