@@ -15,6 +15,18 @@ pwshgrep Is built to be more object-oriented than grep, which is purely text bas
 
 pwshgrep also exclusively uses regex matches, where regex is optional with grep. Simple searches, like for a word, work fine with regex matching. It's simply fast and efficient, making pwshgrep perform more grep-like.
 
+# How does pwshgrep differ from Select-String?
+
+Select-String and pwshgrep share several commonalities. pwshgrep has some advantages, in my opinion.
+
+pwshgrep can...
+1. ...recurse through child directories (-Recurse (alias: -r)).
+2. ...filter by filename (-Include).
+3. ...filter by groups of common file types. Example: -PowerShell filters by files the following extensions: .ps1, .psm1, .psd1
+4. ...mimic grep parameters to make the experience more familiar.
+5. ...automatically convert a string path to a file or directory object when using Path-mode parameters.
+6. ...automatically split multiline strings by line and match individual lines rather than the entire string.
+
 # How does it work?
 pwshgrep has two modes: string and path
 
