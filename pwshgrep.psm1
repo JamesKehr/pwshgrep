@@ -305,7 +305,7 @@ function grep {
         
         if ($Cpp.IsPresent -or $All.IsPresent) {
             Write-Verbose "grep - Adding C++ file extensions."
-            $Include += "*.cpp", "*.h", "*.cc", "*.cxx"
+            $Include += "*.cpp", "*.h", "*.cc", "*.cxx", "*.hxx"
         }
         
         if ($Python.IsPresent -or $All.IsPresent) {
